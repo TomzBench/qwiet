@@ -1,0 +1,11 @@
+{
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "standard",
+  "reportMissingTypeStubs": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownParameterType": false,
+  "reportUnnecessaryIsInstance": "warning",
+  "reportUnnecessaryTypeIgnoreComment": "warning"
+}

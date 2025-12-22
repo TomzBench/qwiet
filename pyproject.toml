@@ -1,0 +1,14 @@
+[project]
+name = "curriculo"
+version = "0.1.0"
+description = "PineNote drawing application with LLM integration"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "cmake-format[yaml]>=0.6.13",
+    "basedpyright>=1.22.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]

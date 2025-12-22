@@ -1,0 +1,41 @@
+# autoconf
+*.cache
+
+# env secrets
+.env.*
+!.env.example
+
+# docs
+docs/_build
+
+# cmake
+compile_commands.json
+/build
+build/
+
+# Python
+*.pyc
+*.pyo
+.venv
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+__pycache__
+
+# Rust
+Cargo.lock
+*.rlib
+*.rmeta
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.DS_Store
+
+# Logs
+*.log
