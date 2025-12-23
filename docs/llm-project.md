@@ -392,6 +392,50 @@ registers a callback and constructs an async `Stream` from the events.
 
 **Build dependency**: `libevdev-dev` (system package)
 
+#### Unified Event Stream
+
+The application merges all input sources into a single Rust event stream. LVGL's
+input abstraction (`lv_indev_data_t`) only exposes position and pressed/released
+state — pressure, tilt, and stylus buttons are discarded. Rather than work
+around this limitation, LVGL widget callbacks push high-level events (menu
+selections, button clicks) into the same stream as raw stylus data.
+
+```
+┌───────────────────────────────────┐ ┌───────────────────────────────────────┐
+│        /dev/input/event*          │ │           LVGL Widgets                │
+│   Wacom W9013 + WS8100 (opt)      │ │   (toolbar buttons, dropdowns)        │
+└───────────────┬───────────────────┘ └───────────────────┬───────────────────┘
+                │                                         │
+                ▼                                         ▼
+┌───────────────────────────────────┐ ┌───────────────────────────────────────┐
+│       Custom libevdev FFI         │ │       LVGL event callbacks            │
+│       (thin C wrapper)            │ │       (on button click, dropdown)     │
+├───────────────────────────────────┤ ├───────────────────────────────────────┤
+│  → Stylus { x, y, pressure,       │ │  → Menu { action, region }            │
+│             tilt, tool, buttons } │ │  → ToolChange { brush, eraser, ... }  │
+└───────────────┬───────────────────┘ └───────────────────┬───────────────────┘
+                │                                         │
+                └──────────────┬──────────────────────────┘
+                               ▼
+              ┌─────────────────────────────────────────────┐
+              │              InputEvent (enum)              │
+              │  Stylus { ... } | Menu { ... } | Tool { }   │
+              └────────────────────┬────────────────────────┘
+                                   │
+                                   ▼
+              ┌─────────────────────────────────────────────┐
+              │           Rust async main loop              │
+              │           (single stream, match dispatch)   │
+              ├─────────────────────────────────────────────┤
+              │  Stylus → lv_canvas drawing                 │
+              │  Menu   → spawn HTTP request                │
+              │  Tool   → update brush state                │
+              └─────────────────────────────────────────────┘
+```
+
+This unified stream allows the Rust layer to handle all application logic
+through a single event loop with enum pattern matching.
+
 ### LVGL FFI
 
 Wrap only the required LVGL functions:
@@ -622,3 +666,89 @@ alternatives:
   — Google Research on LLM + stylus input
 - [Viwoods AiPaper Review (Splitbrain)](https://www.splitbrain.org/blog/2025-09/22-viwoods_ai_paper_review)
   — Detailed technical review with AI critique
+
+---
+
+## Development Workflow
+
+### Dual-Target Build Strategy
+
+The application builds for two targets with different backends:
+
+| Target       | Display Backend | Input Backend       | Use Case            |
+| ------------ | --------------- | ------------------- | ------------------- |
+| **Host**     | LVGL + SDL      | Mouse → stylus shim | Rapid iteration, CI |
+| **PineNote** | LVGL + DRM      | libevdev (real pen) | Hardware testing    |
+
+CMake conditionally links backends:
+
+```cmake
+option(PINENOTE_TARGET "Build for PineNote hardware" OFF)
+
+if(PINENOTE_TARGET)
+    target_sources(myapp PRIVATE src/backend_pinenote.c)
+    target_link_libraries(myapp drm evdev)
+else()
+    target_sources(myapp PRIVATE src/backend_host.c)
+    target_link_libraries(myapp lvgl_sdl)
+endif()
+```
+
+### NFS Root for Hardware Iteration
+
+To avoid repeated `scp` during hardware development, use NFS-mounted application
+directory over USB (faster than WiFi):
+
+```
+┌──────────────────┐      USB-C + RNDIS      ┌─────────────────┐
+│   Host (x86)     │◄───────────────────────►│    PineNote     │
+│                  │          NFS            │                 │
+│ /srv/pinenote/   │  cross-compile output   │ /opt/app (NFS)  │
+│   app/           │  appears instantly      │                 │
+└──────────────────┘                         └─────────────────┘
+```
+
+#### Kernel Configuration (hrdl-linux)
+
+```
+CONFIG_NFS_FS=y
+CONFIG_NFS_V4=y
+CONFIG_ROOT_NFS=y        # Optional: full NFS root
+CONFIG_IP_PNP=y
+CONFIG_IP_PNP_DHCP=y
+CONFIG_USB_GADGET=y
+CONFIG_USB_ETH=m         # RNDIS/ECM for USB networking
+```
+
+#### Host Setup
+
+```bash
+# NFS server
+sudo apt install nfs-kernel-server
+echo "/srv/pinenote/app  *(rw,sync,no_subtree_check,no_root_squash)" | \
+    sudo tee -a /etc/exports
+sudo exportfs -ra
+
+# Cross-compile and install
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=aarch64.cmake -DPINENOTE_TARGET=ON \
+      -DCMAKE_INSTALL_PREFIX=/srv/pinenote/app
+make -C build install
+```
+
+#### PineNote Mount
+
+```bash
+# On PineNote (add to fstab for persistence)
+mount -t nfs4 192.168.7.1:/srv/pinenote/app /opt/app
+```
+
+Changes compile on host → appear on device instantly → run without transfer.
+
+### References
+
+- [Bootlin Embedded Linux Training](https://bootlin.com/training/embedded-linux/)
+  — NFS root, cross-compilation, kernel development
+- [Bootlin Practical Labs (PDF)](https://bootlin.com/doc/training/embedded-linux/embedded-linux-labs.pdf)
+  — Step-by-step NFS setup
+- [Bootlin Training Materials (GitHub)](https://github.com/bootlin/training-materials)
+  — Source for labs and slides
