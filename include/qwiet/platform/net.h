@@ -2,6 +2,7 @@
 #define QWIET_NET_H
 
 #include <qwiet/platform/common.h>
+#include <qwiet/platform/time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,7 +15,7 @@ void
 pal_net_socketpair(bool non_blocking, int sv[2]);
 
 int
-pal_net_socket_poll(struct pollfd *, int, int);
+pal_net_socket_poll(struct pollfd *, int, pal_timeout_t timeout);
 
 int
 pal_net_socket_ready(int sock);

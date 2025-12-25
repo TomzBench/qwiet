@@ -7,7 +7,7 @@
 static struct pal_list_head __list;
 
 static int
-__verify_poll(struct pollfd *fds, int nfds, int timeout, int ncalls)
+__verify_poll(struct pollfd *fds, int nfds, pal_timeout_t timeout, int ncalls)
 {
   int ret, sz = sizeof(struct pollfd) * nfds;
   struct pal_list_head *node = NULL;
@@ -18,7 +18,7 @@ __verify_poll(struct pollfd *fds, int nfds, int timeout, int ncalls)
   TEST_ASSERT_NOT_NULL(node);
   expect = pal_list_entry(node, struct poll_expectation, node);
   TEST_ASSERT_EQUAL_INT(expect->nfds, nfds);
-  TEST_ASSERT_EQUAL_INT(expect->timeout, timeout);
+  TEST_ASSERT_EQUAL_INT(expect->ns, timeout.ns);
   TEST_ASSERT_EQUAL_MEMORY(fds, expect->fds, sz);
   memcpy(fds, &expect->fds[nfds], sz);
   ret = expect->ret;
@@ -56,7 +56,7 @@ diode_poll_verify()
 
 struct poll_expectation *
 diode_poll_create_expectation( //
-    int timeout,
+    pal_timeout_t timeout,
     int n,
     char *events,
     char *revents,
@@ -68,7 +68,7 @@ diode_poll_create_expectation( //
   struct poll_expectation *r = pal_malloc(sz);
   struct pollfd *ptr;
   r->nfds = n;
-  r->timeout = timeout;
+  r->ns = timeout.ns;
   r->ret = ret;
   va_start(ap, ret);
   for (int i = 0; i < n; i++) {

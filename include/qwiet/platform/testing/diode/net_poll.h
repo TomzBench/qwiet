@@ -6,17 +6,18 @@
 
 struct poll_expectation {
   struct pal_list_head node;
-  int nfds, timeout, ret;
+  int nfds, ret;
+  int64_t ns;
   struct pollfd fds[];
 };
 
-#define EXPECT_NET_POLL_ERR(__timeout, __events, __e, ...)                         \
+#define EXPECT_NET_POLL_ERR(__timeout, __events, __e, ...)                     \
   EXPECT_NET_POLL(__timeout, __events, NULL, __e, __VA_ARGS__)
 
-#define EXPECT_NET_POLL_OK(__timeout, __events, __revents, ...)                    \
+#define EXPECT_NET_POLL_OK(__timeout, __events, __revents, ...)                \
   EXPECT_NET_POLL(__timeout, __events, __revents, 0, __VA_ARGS__)
 
-#define EXPECT_NET_POLL(__timeout, __events, __revents, __ret, ...)                \
+#define EXPECT_NET_POLL(__timeout, __events, __revents, __ret, ...)            \
   diode_poll_create_expectation(__timeout,                                     \
                                 PAL_NUM_VA_ARGS(__VA_ARGS__),                  \
                                 __events,                                      \
@@ -39,7 +40,7 @@ diode_poll_verify(void);
 
 struct poll_expectation *
 diode_poll_create_expectation( //
-    int timeout,
+    pal_timeout_t timeout,
     int n,
     char *events,
     char *revents,

@@ -39,13 +39,17 @@ pal_timeout_is_nowait(pal_timeout_t t)
   return t.ns == 0;
 }
 
-/* Convert timeout to milliseconds for poll() */
 int
-pal_timeout_to_poll_ms(pal_timeout_t t);
+pal_timeout_to_ms(pal_timeout_t t);
 
-/* Convert relative timeout to absolute timespec for POSIX APIs */
 void
 pal_timeout_to_abs_timespec(pal_timeout_t t, struct timespec *out);
+
+void
+pal_timeout_to_timespec(pal_timeout_t t, struct timespec *out);
+
+void
+pal_sleep(pal_timeout_t duration);
 
 #ifdef __cplusplus
 }

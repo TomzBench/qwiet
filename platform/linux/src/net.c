@@ -29,9 +29,10 @@ pal_net_socketpair(bool non_blocking, int sv[2])
 }
 
 int
-pal_net_socket_poll(struct pollfd *fds, int nfds, int timeout)
+pal_net_socket_poll(struct pollfd *fds, int nfds, pal_timeout_t timeout)
 {
-  return poll(fds, nfds, timeout);
+  int ms = pal_timeout_to_ms(timeout);
+  return poll(fds, nfds, ms);
 }
 
 int

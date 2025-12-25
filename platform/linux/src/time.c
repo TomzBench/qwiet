@@ -1,8 +1,10 @@
+#include <errno.h>
+
 #include <qwiet/platform/time.h>
 #include <time.h>
 
 int
-pal_timeout_to_poll_ms(pal_timeout_t t)
+pal_timeout_to_ms(pal_timeout_t t)
 {
   if (t.ns < 0) {
     return -1; /* poll() uses -1 for infinite */
@@ -31,4 +33,36 @@ pal_timeout_to_abs_timespec(pal_timeout_t t, struct timespec *out)
   int64_t total_ns = now.tv_nsec + t.ns;
   out->tv_sec = now.tv_sec + (time_t)(total_ns / 1000000000LL);
   out->tv_nsec = (long)(total_ns % 1000000000LL);
+}
+
+void
+pal_timeout_to_timespec(pal_timeout_t t, struct timespec *out)
+{
+  if (pal_timeout_is_forever(t)) {
+    /* ~68 years - portable across 32-bit time_t */
+    out->tv_sec = INT32_MAX;
+    out->tv_nsec = 0;
+  } else if (t.ns <= 0) {
+    out->tv_sec = 0;
+    out->tv_nsec = 0;
+  } else {
+    out->tv_sec = (time_t)(t.ns / 1000000000LL);
+    out->tv_nsec = (long)(t.ns % 1000000000LL);
+  }
+}
+
+void
+pal_sleep(pal_timeout_t duration)
+{
+  if (pal_timeout_is_forever(duration)) {
+    struct timespec ts = {.tv_sec = INT32_MAX, .tv_nsec = 0};
+    while (nanosleep(&ts, &ts) == -1 && errno == EINTR)
+      ;
+    pal_assert(false, "slept for 68 years, congratulations");
+  } else if (duration.ns > 0) {
+    struct timespec ts;
+    pal_timeout_to_timespec(duration, &ts);
+    while (nanosleep(&ts, &ts) == -1 && errno == EINTR)
+      ;
+  }
 }

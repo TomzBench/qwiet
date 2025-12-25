@@ -31,10 +31,10 @@ test_diode_poll_expect_ok(void)
 
   // Create our expectation, validate the macros populate expectation correctly
   struct poll_expectation *e;
-  e = EXPECT_NET_POLL_OK(100, "xxio", "xxeo", 1, 2, 3, 4);
+  e = EXPECT_NET_POLL_OK(PAL_MSEC(100), "xxio", "xxeo", 1, 2, 3, 4);
   TEST_ASSERT_EQUAL_INT(2, e->ret);
   TEST_ASSERT_EQUAL_INT(4, e->nfds);
-  TEST_ASSERT_EQUAL_INT(100, e->timeout);
+  TEST_ASSERT_EQUAL_INT(100 * 1000000LL, e->ns);
   TEST_ASSERT_EQUAL_INT(1, e->fds[0].fd);
   TEST_ASSERT_EQUAL_INT(2, e->fds[1].fd);
   TEST_ASSERT_EQUAL_INT(3, e->fds[2].fd);
@@ -61,7 +61,7 @@ test_diode_poll_expect_ok(void)
   TEST_ASSERT_EQUAL_INT(POLLOUT, e->fds[7].revents);
 
   // Call our stub, verify return and return_thru_ptrs
-  ret = pal_net_socket_poll(pfds, 4, 100);
+  ret = pal_net_socket_poll(pfds, 4, PAL_MSEC(100));
   TEST_ASSERT_EQUAL_INT(2, ret);
   TEST_ASSERT_EQUAL_INT(0, pfds[0].revents);
   TEST_ASSERT_EQUAL_INT(0, pfds[1].revents);
